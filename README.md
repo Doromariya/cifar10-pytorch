@@ -4,8 +4,8 @@ Partial implementation of [Deep Residual Learning for Image Recognition](https:/
 ## Dependencies
 * Python 2.7
 * [PyTorch](http://pytorch.org/)
-* [tensorboard_logger](https://github.com/TeamHG-Memex/tensorboard_logger) (option)
-* [TensorFlow](https://www.tensorflow.org/) (option)
+* [tensorboard](https://www.tensorflow.org/)
+* [tensorboardX]()
 
 ## Demo
 ```

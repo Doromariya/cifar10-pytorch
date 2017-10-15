@@ -6,16 +6,31 @@
 # Created:  2017-04-11
 
 import math
-import torch.nn as nn
-import torch.nn.functional as F
 from collections import OrderedDict
+
+import torch.nn as nn
+
+
+def _init_weights(model):
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            nn.init.kaiming_normal(m.weight)
+            if m.bias is not None:
+                nn.init.constant(m.bias, 0)
+        elif isinstance(m, nn.BatchNorm2d):
+            nn.init.constant(m.weight, 1)
+            nn.init.constant(m.bias, 0)
+        elif isinstance(m, nn.Linear):
+            nn.init.normal(m.weight, mean=0, std=1e-2)
+            if m.bias is not None:
+                nn.init.constant(m.bias, 0)
 
 
 class VGG(nn.Module):
 
     def __init__(self):
         super(VGG, self).__init__()
-        ch = [1, 32, 32, 64, 64, 128, 128]
+        ch = [3, 32, 32, 64, 64, 128, 128]
         kwargs = {'kernel_size': 3, 'stride': 1, 'padding': 1, 'bias': False}
         self.features = nn.Sequential(OrderedDict([
             # Layer1
@@ -45,32 +60,16 @@ class VGG(nn.Module):
             ('pool5', nn.MaxPool2d(kernel_size=2)),
         ]))
         self.classifier = nn.Sequential(OrderedDict([
-            ('fc1', nn.Linear(ch[5] * 12, ch[6], bias=False)),
+            ('fc1', nn.Linear(ch[5], ch[6], bias=False)),
             ('norm1', nn.BatchNorm1d(ch[6])),
             ('relu1', nn.ReLU(inplace=True)),
             ('drop1', nn.Dropout(p=0.5)),
-            ('fc2', nn.Linear(ch[6], 6, bias=False)),
+            ('fc2', nn.Linear(ch[6], 10, bias=False)),
         ]))
-        self._initialize_weights()
-
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-                if m.bias is not None:
-                    m.bias.data.zero_()
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-            elif isinstance(m, nn.Linear):
-                n = m.weight.size(1)
-                m.weight.data.normal_(0, 0.01)
-                if m.bias is not None:
-                    m.bias.data.zero_()
+        _init_weights(self)
 
     def forward(self, x):
         x = self.features(x)
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
-        return F.log_softmax(x)
+        return x

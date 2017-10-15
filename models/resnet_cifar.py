@@ -1,7 +1,29 @@
-import torch.nn as nn
+#!/usr/bin/env python
+# coding: utf-8
+#
+# Author:   Kazuto Nakashima
+# URL:      https://github.com/kazuto1011
+# Created:  2017-04-11
+
 import math
-import torch.nn.functional as F
 from collections import OrderedDict
+
+import torch.nn as nn
+
+
+def _init_weights(model):
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            nn.init.kaiming_normal(m.weight)
+            if m.bias is not None:
+                nn.init.constant(m.bias, 0)
+        elif isinstance(m, nn.BatchNorm2d):
+            nn.init.constant(m.weight, 1)
+            nn.init.constant(m.bias, 0)
+        elif isinstance(m, nn.Linear):
+            nn.init.normal(m.weight, mean=0, std=1e-2)
+            if m.bias is not None:
+                nn.init.constant(m.bias, 0)
 
 
 class BasickBlock(nn.Module):
@@ -36,7 +58,8 @@ class ResidualBlock(nn.Module):
         self.blocks = nn.Sequential()
         self.blocks.add_module('block0', BasickBlock(n_in, n_out, stride))
         for i in range(n_block - 1):
-            self.blocks.add_module('block{}'.format(i + 1), BasickBlock(n_out, n_out))
+            self.blocks.add_module('block{}'.format(
+                i + 1), BasickBlock(n_out, n_out))
 
     def forward(self, x):
         return self.blocks(x)
@@ -57,19 +80,10 @@ class ResNetCifar10(nn.Module):
             ('avgpl', nn.AvgPool2d(8)),
         ]))
         self.fc = nn.Linear(ch[2], 10)
-        self._initialize_weights()
-
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
+        _init_weights(self)
 
     def forward(self, x):
         x = self.features(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
-        return F.log_softmax(x)
+        return x
